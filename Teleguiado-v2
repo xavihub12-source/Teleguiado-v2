@@ -1,0 +1,187 @@
+--[[
+    🔥 XAVI HUB | TELEGUIADO 🔥
+    ✅ Guarda tu posición
+    ✅ Vas a ZONA SEGURA → te dejan de seguir
+    ✅ Vuelves a donde estabas → los animales no te ven
+    ✅ Repite cuando quieras
+    ✅ Seguro con el huevo 🥚
+]]
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Player = Players.LocalPlayer
+local procesando = false
+local menuAbierto = true
+local POSICION_SEGURA = nil
+local POSICION_ANTERIOR = nil
+
+-- ⚙️ Velocidad suave
+local TIEMPO = 1.5
+
+local Gui = Player:WaitForChild("PlayerGui")
+
+-- === INTERFAZ ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "XaviHubTeleguiado"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = Gui
+
+-- Botón principal
+local BtnMenu = Instance.new("TextButton")
+BtnMenu.Size = UDim2.new(0, 180, 0, 45)
+BtnMenu.Position = UDim2.new(0.02, 0, 0.08, 0)
+BtnMenu.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+BtnMenu.BorderSizePixel = 2
+BtnMenu.BorderColor3 = Color3.fromRGB(255, 35, 35)
+BtnMenu.Text = "XAVI HUB"
+BtnMenu.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnMenu.Font = Enum.Font.GothamBold
+BtnMenu.TextSize = 18
+BtnMenu.Parent = ScreenGui
+
+-- Panel MÁS PEQUEÑO
+local Marco = Instance.new("Frame")
+Marco.Size = UDim2.new(0, 260, 0, 230)
+Marco.Position = UDim2.new(0.02, 0, 0.15, 0)
+Marco.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
+Marco.BorderSizePixel = 2
+Marco.BorderColor3 = Color3.fromRGB(255, 35, 35)
+Marco.Active = true
+Marco.Draggable = true
+Marco.Visible = true
+Marco.Parent = ScreenGui
+
+-- Título
+local Titulo = Instance.new("TextLabel")
+Titulo.Size = UDim2.new(1, 0, 0, 40)
+Titulo.Position = UDim2.new(0, 0, 0, 0)
+Titulo.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+Titulo.Text = "TELEGUIADO"
+Titulo.TextColor3 = Color3.fromRGB(255, 100, 100)
+Titulo.Font = Enum.Font.GothamBold
+Titulo.TextSize = 17
+Titulo.Parent = Marco
+
+-- Botón GUARDAR ZONA SEGURA
+local BtnGuardarSegura = Instance.new("TextButton")
+BtnGuardarSegura.Size = UDim2.new(1, -16, 0, 45)
+BtnGuardarSegura.Position = UDim2.new(0, 8, 0, 50)
+BtnGuardarSegura.BackgroundColor3 = Color3.fromRGB(25, 120, 40)
+BtnGuardarSegura.Text = "1️⃣ GUARDAR ZONA"
+BtnGuardarSegura.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnGuardarSegura.Font = Enum.Font.GothamBold
+BtnGuardarSegura.TextSize = 14
+BtnGuardarSegura.Parent = Marco
+
+-- Botón ESCAPAR Y VOLVER
+local BtnEscapar = Instance.new("TextButton")
+BtnEscapar.Size = UDim2.new(1, -16, 0, 45)
+BtnEscapar.Position = UDim2.new(0, 8, 0, 105)
+BtnEscapar.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+BtnEscapar.Text = "2️⃣ ESCAPAR Y VOLVER"
+BtnEscapar.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnEscapar.Font = Enum.Font.GothamBold
+BtnEscapar.TextSize = 14
+BtnEscapar.Parent = Marco
+
+-- Botón VOLVER A ZONA SEGURA
+local BtnVolver = Instance.new("TextButton")
+BtnVolver.Size = UDim2.new(1, -16, 0, 45)
+BtnVolver.Position = UDim2.new(0, 8, 0, 160)
+BtnVolver.BackgroundColor3 = Color3.fromRGB(30, 90, 180)
+BtnVolver.Text = "3️⃣ VOLVER A ZONA"
+BtnVolver.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnVolver.Font = Enum.Font.GothamBold
+BtnVolver.TextSize = 14
+BtnVolver.Parent = Marco
+
+-- === ABRIR / CERRAR ===
+BtnMenu.MouseButton1Click:Connect(function()
+    menuAbierto = not menuAbierto
+    Marco.Visible = menuAbierto
+    BtnMenu.Text = menuAbierto and "XAVI HUB ▲" or "XAVI HUB ▼"
+end)
+
+-- === GUARDAR ZONA SEGURA ===
+BtnGuardarSegura.MouseButton1Click:Connect(function()
+    if not Player.Character then Player.CharacterAdded:Wait() end
+    local Root = Player.Character:FindFirstChild("HumanoidRootPart")
+    if not Root then return end
+
+    POSICION_SEGURA = Root.Position
+    BtnGuardarSegura.Text = "✅ ZONA GUARDADA"
+    task.wait(2)
+    BtnGuardarSegura.Text = "1️⃣ GUARDAR ZONA"
+end)
+
+-- === ESCAPAR → ZONA SEGURA → VOLVER ===
+BtnEscapar.MouseButton1Click:Connect(function()
+    if procesando then return end
+    if not POSICION_SEGURA then
+        BtnEscapar.Text = "¡GUARDA PRIMERO! ⚠️"
+        task.wait(2)
+        BtnEscapar.Text = "2️⃣ ESCAPAR Y VOLVER"
+        return
+    end
+
+    procesando = true
+    if not Player.Character then Player.CharacterAdded:Wait() end
+    local Root = Player.Character:FindFirstChild("HumanoidRootPart")
+    if not Root then procesando = false return end
+
+    POSICION_ANTERIOR = Root.Position
+
+    BtnEscapar.Text = "🏃 YENDO..."
+    TweenService:Create(Root, TweenInfo.new(TIEMPO, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        CFrame = CFrame.new(POSICION_SEGURA + Vector3.new(0, 2, 0))
+    }):Play()
+    task.wait(TIEMPO + 0.5)
+
+    BtnEscapar.Text = "⏳ ESPERANDO..."
+    task.wait(1.5)
+
+    BtnEscapar.Text = "🔄 VOLVIENDO..."
+    TweenService:Create(Root, TweenInfo.new(TIEMPO, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        CFrame = CFrame.new(POSICION_ANTERIOR + Vector3.new(0, 2, 0))
+    }):Play()
+    task.wait(TIEMPO + 0.5)
+
+    BtnEscapar.Text = "✅ LISTO"
+    BtnEscapar.BackgroundColor3 = Color3.fromRGB(15, 140, 30)
+    task.wait(2)
+    BtnEscapar.Text = "2️⃣ ESCAPAR Y VOLVER"
+    BtnEscapar.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+    procesando = false
+end)
+
+-- === VOLVER A ZONA SEGURA ===
+BtnVolver.MouseButton1Click:Connect(function()
+    if procesando then return end
+    if not POSICION_SEGURA then
+        BtnVolver.Text = "¡GUARDA PRIMERO! ⚠️"
+        task.wait(2)
+        BtnVolver.Text = "3️⃣ VOLVER A ZONA"
+        return
+    end
+
+    procesando = true
+    if not Player.Character then Player.CharacterAdded:Wait() end
+    local Root = Player.Character:FindFirstChild("HumanoidRootPart")
+    if not Root then procesando = false return end
+
+    BtnVolver.Text = "🏃 YENDO..."
+    TweenService:Create(Root, TweenInfo.new(TIEMPO, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+        CFrame = CFrame.new(POSICION_SEGURA + Vector3.new(0, 2, 0))
+    }):Play()
+    task.wait(TIEMPO)
+
+    BtnVolver.Text = "✅ LLEGÓ"
+    BtnVolver.BackgroundColor3 = Color3.fromRGB(15, 140, 30)
+    task.wait(2)
+    BtnVolver.Text = "3️⃣ VOLVER A ZONA"
+    BtnVolver.BackgroundColor3 = Color3.fromRGB(30, 90, 180)
+    procesando = false
+end)
+
+print("✅ TELEGUIADO | XAVI HUB LISTO")
